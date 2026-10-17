@@ -1,0 +1,167 @@
+# Builds the app on every pull request and push to main, and deploys main to
+# the Cloudflare R2 bucket that serves https://amp.sarl.dev/.
+#
+# The bucket is public through R2's custom-domain setting, with a Cloudflare
+# URL Rewrite rule mapping / to /index.html; this workflow only uploads files.
+#
+# One-time setup (GitHub → Settings → Environments → Cloudflare):
+#   secrets    R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+#              (an R2 API token with Object Read & Write on this bucket only)
+#              CF_ZONE_ID, CF_API_TOKEN
+#              (the sarl.dev zone, and a token with Zone → Cache Purge on it)
+#   variable   R2_BUCKET
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # NeuralAmpModelerCore, and the dependencies it vendors as submodules.
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The SDK is large and slow to install; keyed on the pin, so it is fetched
+      # once per Emscripten version.
+      - name: Cache Emscripten SDK
+        uses: actions/cache@v4
+        with:
+          path: .emsdk
+          key: emsdk-${{ runner.os }}-${{ hashFiles('engine/emsdk-version.txt') }}
+
+      - name: Install Emscripten SDK
+        run: engine/setup-emsdk.sh
+
+      - run: npm ci
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      # Compiles NeuralAmpModelerCore for the host, which takes a few minutes,
+      # so it gates pull requests rather than every deploy.
+      - name: Engine tests (C++)
+        if: github.event_name == 'pull_request'
+        run: npm run test:cpp
+
+      # build:wasm -> tsc -b -> vite build, so the precache never ships
+      # without the engine it depends on.
+      - name: Build
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # One deploy at a time; a newer push waits for the one in progress.
+    concurrency:
+      group: deploy-r2
+      cancel-in-progress: false
+    # The secrets and the R2_BUCKET variable live in this GitHub environment.
+    environment:
+      name: Cloudflare
+      url: https://amp.sarl.dev/
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_EC2_METADATA_DISABLED: 'true'
+      # Newer CLI versions add CRC checksum headers to every request by
+      # default, which R2 has rejected; send them only where S3 requires them.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      BUCKET: s3://${{ vars.R2_BUCKET }}
+      SITE: https://amp.sarl.dev
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      # Fails with a clear message rather than an opaque S3 error.
+      - name: Check configuration
+        env:
+          ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          missing=0
+          [ -n "$ACCOUNT_ID" ] || { echo "::error::Secret R2_ACCOUNT_ID is not set."; missing=1; }
+          [ -n "$CF_ZONE_ID" ] || { echo "::error::Secret CF_ZONE_ID is not set."; missing=1; }
+          [ -n "$CF_API_TOKEN" ] || { echo "::error::Secret CF_API_TOKEN is not set."; missing=1; }
+          [ -n "$AWS_ACCESS_KEY_ID" ] || { echo "::error::Secret R2_ACCESS_KEY_ID is not set."; missing=1; }
+          [ -n "$AWS_SECRET_ACCESS_KEY" ] || { echo "::error::Secret R2_SECRET_ACCESS_KEY is not set."; missing=1; }
+          [ -n "$R2_BUCKET" ] || { echo "::error::Variable R2_BUCKET is not set."; missing=1; }
+          exit $missing
+
+      # Upload order keeps the live site consistent: the hashed files a new
+      # index.html points at go up first, the entry points last. Nothing is
+      # deleted, because an open tab or a not-yet-updated service worker may
+      # still ask for the previous build's hashed files.
+      - name: Upload hashed assets (cached for a year)
+        run: >
+          aws s3 cp dist/assets "$BUCKET/assets" --recursive --endpoint-url "$ENDPOINT"
+          --cache-control "public, max-age=31536000, immutable"
+
+      - name: Upload the engine and static files (revalidated)
+        run: |
+          # Explicit types: the CLI's guesses for these are wrong or missing,
+          # and the engine is fetched and compiled as application/wasm.
+          aws s3 cp dist/nam-engine.wasm "$BUCKET/nam-engine.wasm" --endpoint-url "$ENDPOINT" \
+            --cache-control "no-cache" --content-type "application/wasm"
+          aws s3 cp dist "$BUCKET" --recursive --endpoint-url "$ENDPOINT" \
+            --cache-control "no-cache" \
+            --exclude "assets/*" --exclude "*.wasm" \
+            --exclude "index.html" --exclude "sw.js" --exclude "manifest.webmanifest"
+
+      - name: Upload the entry points (revalidated)
+        run: |
+          aws s3 cp dist/manifest.webmanifest "$BUCKET/manifest.webmanifest" --endpoint-url "$ENDPOINT" \
+            --cache-control "no-cache" --content-type "application/manifest+json"
+          aws s3 cp dist/sw.js "$BUCKET/sw.js" --endpoint-url "$ENDPOINT" \
+            --cache-control "no-cache" --content-type "text/javascript"
+          aws s3 cp dist/index.html "$BUCKET/index.html" --endpoint-url "$ENDPOINT" \
+            --cache-control "no-cache" --content-type "text/html; charset=utf-8"
+
+      # The edge can hold an older copy of a file whose name does not change
+      # between builds (sw.js, the engine glue, icons), so purge exactly those.
+      # Hashed assets need no purge: every build gives them new names. Batches
+      # of 30, the per-request limit for purging by URL; any failed batch fails
+      # the job, so a stale edge is never reported as a successful deploy.
+      - name: Purge the edge cache for unhashed files
+        env:
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          urls=$( { echo "$SITE/"; find dist -type f ! -path 'dist/assets/*' | sed "s|^dist|$SITE|"; } | sort )
+          echo "Purging $(echo "$urls" | wc -l) URLs"
+          echo "$urls" | jq -R . | jq -c -s '. as $u | range(0; length; 30) | {files: $u[.:. + 30]}' | while read -r body; do
+            result=$(curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache" \
+              -H "Authorization: Bearer $CF_API_TOKEN" -H "Content-Type: application/json" --data "$body")
+            if [ "$(echo "$result" | jq -r .success)" != true ]; then
+              echo "::error::Cache purge failed: $(echo "$result" | jq -c .errors)"
+              exit 1
+            fi
+          done
+          echo "Purged."

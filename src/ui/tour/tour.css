@@ -1,0 +1,176 @@
+/* The guided tour. The dialog covers the viewport and is itself transparent:
+   the dimming is the spotlight's own enormous shadow, so the lit element is a
+   hole in it rather than something drawn on top. */
+.tour {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.tour::backdrop {
+  background: transparent;
+}
+
+.tour__spot {
+  position: fixed;
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 9999px rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+  transition:
+    top 0.25s ease,
+    left 0.25s ease,
+    width 0.25s ease,
+    height 0.25s ease;
+}
+
+.tour__tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: min(340px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 16px 18px 14px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  transition:
+    top 0.25s ease,
+    left 0.25s ease;
+}
+
+/* The arrow: a small rotated square on the edge facing the target, with the
+   two borders that would sit inside the tooltip removed. */
+.tour__tip::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--panel-face);
+  border: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+.tour__tip[data-side='below']::before,
+.tour__tip[data-side='above']::before {
+  left: calc(var(--arrow, 50%) - 7px);
+}
+
+.tour__tip[data-side='right']::before,
+.tour__tip[data-side='left']::before {
+  top: calc(var(--arrow, 50%) - 7px);
+}
+
+.tour__tip[data-side='below']::before {
+  top: -7px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.tour__tip[data-side='above']::before {
+  bottom: -7px;
+  background: var(--panel-shade);
+  border-left: 0;
+  border-top: 0;
+}
+
+.tour__tip[data-side='right']::before {
+  left: -7px;
+  border-top: 0;
+  border-right: 0;
+}
+
+.tour__tip[data-side='left']::before {
+  right: -7px;
+  border-bottom: 0;
+  border-left: 0;
+}
+
+.tour__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.tour__count {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--legend-dim);
+}
+
+.tour__skip {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+  color: var(--legend-dim);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tour__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.tour__body {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.tour__nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tour__btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 16px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tour__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tour__btn--next {
+  border-color: var(--accent);
+}
+
+.tour__btn:focus-visible,
+.tour__skip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__spot,
+  .tour__tip {
+    transition: none;
+  }
+}

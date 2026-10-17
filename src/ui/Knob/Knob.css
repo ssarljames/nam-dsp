@@ -1,0 +1,44 @@
+.knob {
+  display: inline-grid;
+  justify-items: center;
+  gap: 6px;
+  /* Suppress touch scrolling so a vertical drag is a knob gesture. */
+  touch-action: none;
+  user-select: none;
+}
+
+.knob__surface {
+  display: block;
+  cursor: ns-resize;
+  /* >= 44px hit target on touch even when the drawn knob is smaller. */
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  outline: none;
+}
+
+.knob__legend {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--legend);
+}
+
+.knob__readout {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--legend-dim);
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+  min-height: 1em;
+}
+
+.knob:hover .knob__readout,
+.knob--active .knob__readout {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knob__readout {
+    transition: none;
+  }
+}

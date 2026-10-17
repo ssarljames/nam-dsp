@@ -1,0 +1,3 @@
+[submodule "engine/third_party/NeuralAmpModelerCore"]
+	path = engine/third_party/NeuralAmpModelerCore
+	url = https://github.com/sdatkinson/NeuralAmpModelerCore

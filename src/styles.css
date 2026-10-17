@@ -1,0 +1,104 @@
+:root {
+  color-scheme: dark;
+  --panel-bg: #1b1b1e;
+  --panel-face: #26262b;
+  /* The foot of the panel's face gradient. A token, not a literal, so the
+     light theme can repaint it — see panel.css. */
+  --panel-shade: #1e1e22;
+  --panel-edge: #0e0e10;
+  /* Raised control faces (the engage button) and screw heads. Tokens for the
+     same reason: anything written as a literal in a rule cannot be themed. */
+  --control-face-top: #33333a;
+  --control-face-bottom: #232328;
+  --screw-hi: #8a8a92;
+  --screw-lo: #35353a;
+  --legend: #cfc8b8;
+  --legend-dim: #8a857a;
+  --accent: #d8a13a;
+  --led-off: #3a2b1a;
+  --led-on: #ffb02e;
+  --warn: #e0623c;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--panel-bg);
+  color: var(--legend);
+}
+
+#root {
+  display: flex;
+  min-height: 100%;
+}
+
+/* The update modal. Lives here rather than in panel.css because App mounts it
+   beside the panel, not inside it. */
+.update-modal {
+  width: min(420px, 92vw);
+  padding: 0;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.update-modal::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.update-modal__body {
+  display: grid;
+  justify-items: center;
+  gap: 24px;
+  padding: 32px 32px 24px;
+  text-align: center;
+}
+
+.update-modal__message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.update-modal__button {
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 9px 36px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.update-modal__button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.brand {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.brand__name {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--legend);
+}
+
+.brand__tagline {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--legend-dim);
+}

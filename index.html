@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1b1b1e" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e8e5de" />
+    <title>Sarlifier</title>
+
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <link rel="canonical" href="https://amp.sarl.dev/" />
+
+    <meta
+      name="description"
+      content="A browser-based amp &amp; tone stack built by someone who still double-checks his pointer math. Real-time guitar and bass tone shaping, tuning and monitoring."
+    />
+    <meta name="author" content="Sarl" />
+
+    <meta property="og:title" content="Sarlifier" />
+    <meta
+      property="og:description"
+      content="A browser-based amp &amp; tone stack built by someone who still double-checks his pointer math."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sarlifier" />
+    <meta property="og:locale" content="en" />
+    <meta property="og:url" content="https://amp.sarl.dev/" />
+    <meta property="og:image" content="https://amp.sarl.dev/og-card.png?v=2" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Sarlifier — an amber-lit amp knob on a dark panel, beside the wordmark SARLIFIER and the line: a browser-based amp and tone stack built by someone who still double-checks his pointer math" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sarlifier" />
+    <meta
+      name="twitter:description"
+      content="A browser-based amp &amp; tone stack built by someone who still double-checks his pointer math."
+    />
+    <meta name="twitter:image" content="https://amp.sarl.dev/og-card.png?v=2" />
+    <meta name="twitter:image:alt" content="Sarlifier — an amber-lit amp knob on a dark panel, beside the wordmark SARLIFIER" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Sarlifier",
+        "url": "https://amp.sarl.dev/",
+        "description": "A browser-based amp & tone stack built by someone who still double-checks his pointer math.",
+        "applicationCategory": "MultimediaApplication",
+        "applicationSubCategory": "Guitar and bass amp simulation",
+        "operatingSystem": "Any — runs in a web browser",
+        "browserRequirements": "Requires a browser with Web Audio and AudioWorklet support, plus an audio input device",
+        "isAccessibleForFree": true,
+        "author": {
+          "@type": "Person",
+          "name": "Sarl"
+        },
+        "featureList": [
+          "Real-time guitar and bass monitoring through a browser audio interface",
+          "Three-band tone stack with input gain and output volume",
+          "Chromatic tuner covering bass and guitar, from low B0 to E4 and above",
+          "Installable as a progressive web app, with offline support"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

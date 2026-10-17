@@ -1,0 +1,33 @@
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# Emscripten / native build output
+engine/build/
+engine/build-host/
+public/nam-engine.wasm
+public/nam-engine.js
+public/nam-engine.worklet.js
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+# Worktrees
+.worktrees/
+
+# Emscripten SDK (pinned by engine/emsdk-version.txt, installed by engine/setup-emsdk.sh)
+.emsdk/
+
+# Vitest cache
+.vitest/
+
+# Local .nam models for testing — never committed (multi-MB binaries), and never
+# in public/, which is copied into the build. Captures from TONE3000 may not be
+# redistributed.
+public/models/
+local-models/

@@ -1,0 +1,2434 @@
+/* Rack layout. The session bar (.topnav) sits on top: the live switch, the
+   device pickers and the tuner. Below it the signal chain runs left to right
+   in engine order — see .chain further down — and scrolls sideways when it is
+   wider than the page.
+
+   `.rig` exists because <main> centres its own children; a full-width grid
+   wrapper is what lets the rows fill the page instead of shrinking to their
+   content. */
+.rig {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  /* At least a screen tall, so the chain has room to sit in the middle of
+     what is left below the effects tray. */
+  min-height: 100vh;
+}
+
+.panel {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr;
+  padding: 28px 32px;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.016) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--panel-edge);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+/* Generates no box at all, so the four screws stay absolutely positioned
+   against .panel without the wrapper claiming a row of the panel's grid. */
+.panel__screws {
+  display: contents;
+}
+
+.panel__screws span {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--screw-hi), var(--screw-lo));
+}
+.panel__screws span:nth-child(1) { top: 10px; left: 10px; }
+.panel__screws span:nth-child(2) { top: 10px; right: 10px; }
+.panel__screws span:nth-child(3) { bottom: 10px; left: 10px; }
+.panel__screws span:nth-child(4) { bottom: 10px; right: 10px; }
+
+.panel--titled {
+  grid-template-rows: auto 1fr;
+}
+
+/* Title row: the silkscreened legend at the left, and — when a panel has
+   one — its bypass switch pinned to the right edge of the same row. The
+   hairline and spacing that used to live on .panel__title move here so they
+   still span the row when a titleAction is present. */
+.panel__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+/* The power button is 34px, taller than the title's text line, and would set
+   the header's height by itself — so a panel with a switch would get a taller
+   header than one without, and in a row of panels their hairlines would sit
+   at different heights. Pulled in by 9px top and bottom, it overhangs into
+   the panel's top padding instead, clears the hairline beneath it, and every
+   header comes out the same height. */
+.panel__title-row > .bypass-btn,
+.panel__actions > .bypass-btn {
+  margin-block: -9px;
+}
+
+.panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Silkscreen lettering: the same size and tracking as every other legend on
+   the panels. */
+.panel__title {
+  margin: 0;
+  font-size: 10px;
+  /* Pinned to the power button's pulled-in footprint (34px less 2 x 9px), so
+     a header with a switch and one without come out exactly the same height. */
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--legend-dim);
+}
+
+.panel__body {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+}
+
+/* The title lights the same amber as the power glow when the stage is on, so
+   the state reads from across the room. */
+.panel__title {
+  transition: color 120ms ease-out, text-shadow 120ms ease-out;
+}
+
+.panel--lit .panel__title {
+  color: var(--led-on);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--led-on) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel__title {
+    transition: none;
+  }
+}
+
+/* Hugs the knob row's width and centres as a block, so anything left-aligned
+   inside it lines up with the leftmost knob rather than with the panel edge.
+   `fit-content` rather than `max-content`: it still shrinks on a narrow
+   viewport, so the knob row keeps its ability to wrap. */
+.panel__stack {
+  display: grid;
+  gap: 18px;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.panel__readouts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.readout {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--legend);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout__legend {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--legend-dim);
+}
+
+.panel__knobs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* A panel-mounted toggle: LED, bezel, lever, legend. Used by the global live
+   switch only now — per-panel bypass switches live in the title row instead,
+   see .bypass-btn below. Gap and legend match .knob__legend so legends still
+   line up wherever one sits beside a knob.
+
+   No align-self: it used to need centring against the taller knob columns it
+   shared a row with, and it no longer shares a row with anything. */
+.switch {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.switch__legend {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--legend-dim);
+}
+
+.switch--on .switch__legend {
+  color: var(--led-on);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.switch__bezel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 42px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--panel-shade), var(--panel-edge));
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.65);
+  perspective: 120px;
+}
+
+.switch__lever {
+  width: 13px;
+  height: 26px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--screw-hi), var(--screw-lo));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transform-origin: 50% 100%;
+  transform: rotateX(30deg);
+  transition: transform 120ms ease-out;
+}
+
+.switch--on .switch__lever {
+  transform: rotateX(-30deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch__lever {
+    transition: none;
+  }
+}
+
+.switch__led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--led-off);
+  box-shadow: inset 0 0 3px rgba(0,0,0,0.8);
+}
+
+.switch--on .switch__led {
+  background: var(--led-on);
+  box-shadow: 0 0 9px var(--led-on);
+}
+
+/* Per-panel bypass button: a power glyph in the title row, sized well past
+   the 24px minimum tap target since it is the one control in the header that
+   actually does something. Colour alone carries the state (grey/off, yellow/
+   on) — stroke="currentColor" in the icon means this is the only place that
+   colour needs to be set. */
+.bypass-btn {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--legend-dim);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: color 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.bypass-btn:hover {
+  color: var(--legend);
+}
+
+.bypass-btn--on,
+.bypass-btn--on:hover {
+  color: var(--led-on);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 10px var(--led-on), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.bypass-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.bypass-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bypass-btn {
+    transition: none;
+  }
+}
+
+.meter {
+  display: block;
+  border: 1px solid var(--panel-edge);
+  border-radius: 3px;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--legend-dim);
+}
+
+.status__warn { color: var(--warn); }
+.status__note { color: var(--legend); }
+
+.advisory {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: rgba(216, 161, 58, 0.09);
+  color: var(--legend);
+  font-size: 13px;
+}
+
+.device {
+  display: grid;
+  gap: 6px;
+  justify-items: stretch;
+  /* Let a long device name shrink the control rather than widen the row. */
+  min-width: 0;
+}
+
+.device__legend {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--legend-dim);
+}
+
+.device__select {
+  font: inherit;
+  font-size: 12px;
+  /* Full width of the panel — each selector owns its own row now, so there is
+     no neighbour to share the width with and no reason to cap it. */
+  width: 100%;
+  padding: 7px 10px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.device__select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Disabled means unavailable, not merely unfocused — outside Chromium the
+   output picker cannot work at all, and it should look that way rather than
+   leaving someone clicking a control that will never open. */
+.device__select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Tablet portrait and up: the knob row reflows to a single column of rows. */
+@media (max-width: 860px) {
+  .panel { padding: 20px; }
+  .panel__knobs { gap: 20px; }
+}
+
+/* Tuner — its own analyser tap, not the meter's, but the same panel shell. */
+/* One row: the note, its cents, then the indicator taking the rest. */
+/* The note centred over its cents and the cent meter, which fills the panel
+   width so small deviations still move the needle visibly. */
+.tuner {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.tuner__note {
+  font-size: 26px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: var(--legend);
+}
+
+.tuner__cents {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 4ch;
+  height: 1.2em;
+  text-align: center;
+  color: var(--legend-dim);
+}
+
+.tuner__bar {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--panel-shade);
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.tuner__centre {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  background: var(--panel-edge);
+  transform: translateX(-50%);
+}
+
+.tuner__needle {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--legend-dim);
+  transform: translateX(-50%);
+  transition: left 80ms linear, background-color 120ms ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tuner__needle {
+    transition: none;
+  }
+}
+
+/*
+ * The light variant repaints EVERY token :root defines, not just the ones that
+ * obviously change. A token left out here silently keeps its dark-theme value,
+ * which is exactly the "inherited rather than painted" failure the design
+ * forbids — and the ones easiest to forget are the accents, because they look
+ * plausible on both grounds until you check the contrast.
+ *
+ * Counting tokens is not enough on its own: a colour written as a raw literal
+ * in a rule below is invisible to that check and cannot be repainted here at
+ * all. Three tokens exist for exactly that reason. --panel-shade: the panel's
+ * face gradient used to end in a hardcoded near-black, leaving the light panel
+ * fading to almost black with --legend-dim at roughly 2.35:1 against it.
+ * --control-face-*: the engage button's face was hardcoded dark, so in light
+ * theme its --legend label would have been near-black text on a near-black
+ * button — the primary control, unreadable. --screw-*: decorative, fixed for
+ * consistency, because a rule with one exception is a rule nobody follows.
+ *
+ * If you add a colour, add it as a token. Grep this file for `#` outside the
+ * two palette blocks; the answer should stay zero.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --panel-bg: #e8e5de;
+  --panel-face: #d8d4cb;
+  --panel-shade: #c6c1b6;
+  --panel-edge: #b4afa4;
+  /* Raised, not sunken: lighter than the panel face so the control reads as
+     standing proud of it, and so --legend stays legible on top. */
+  --control-face-top: #eae6dd;
+  --control-face-bottom: #d0ccc2;
+  --screw-hi: #b9b5aa;
+  --screw-lo: #6f6b62;
+  --legend: #24211c;
+  --legend-dim: #5d584e;
+  --accent: #8a5a0f;
+  --led-off: #c3b7a4;
+  --led-on: #c76a00;
+  --warn: #a3341a;
+}
+
+
+/* Noise gate: its one knob (THRESHOLD) beside the input meter, so the
+   threshold can be set against the level it gates. */
+.gate {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+/* Wraps the single THRESHOLD knob so the gate fits a narrow column and
+   matches the devices panel's height. */
+.gate__knobs {
+  display: grid;
+  justify-items: center;
+  row-gap: 14px;
+}
+
+/* Compact knobs, legend on top: in the input, output and gate panels they
+   stack to one height. */
+.gate__knobs > .knob {
+  position: relative;
+}
+
+.gate__knobs > .knob .knob__legend {
+  order: -1;
+}
+
+/* The value readout only shows on hover or drag, but in flow it reserves a
+   line of height the whole time. Here it takes the legend's place instead:
+   while the knob is being read or turned, its label becomes its value, the
+   way a hardware display does. Floated below the dial it would sit against
+   the next row's legend and read as belonging to it. */
+.gate__knobs > .knob .knob__readout {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.gate__knobs > .knob .knob__legend {
+  transition: opacity 160ms ease-out;
+}
+
+.gate__knobs > .knob:hover .knob__legend,
+.gate__knobs > .knob.knob--active .knob__legend {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gate__knobs > .knob .knob__legend {
+    transition: none;
+  }
+}
+
+/* The signal chain: gate, amp model, cab and EQ left to right in engine order,
+   scrolled sideways when they do not fit. Panels keep their own look; only
+   where they sit changes. Pan with Alt-drag, or by dragging the background
+   between panels (see Chain.tsx). */
+.chain {
+  /* Auto margins split the leftover height above and below, which centres the
+     chain vertically beneath the effects tray. On a short window there is no
+     leftover, so it simply follows the tray. */
+  margin-block: auto;
+  display: flex;
+  /* Every panel has a fixed width now, so on a wide screen the chain is
+     shorter than the window and sits in the middle. `safe` keeps a chain that
+     is too wide starting at its left edge, where it can be scrolled. */
+  justify-content: safe center;
+  align-items: stretch;
+  overflow-x: auto;
+  /* A scroller clips at its padding edge, so the top and bottom make room for
+     the panels' drop shadow (0 10px 28px: 18px above, 38px below). The sides
+     match the tray's, so the first and last panels line up with it and never
+     sit flush against the window when scrolled to an end. */
+  padding: 20px 18px 40px;
+}
+
+/* The scrollbar as a fader slot: a recessed track, and a thumb with the same
+   raised face as the knobs and buttons, marked with a short amber grip. It is
+   faint at rest and full while the chain is pointed at, scrolled or panned:
+   --chain-bar mixes every colour toward transparent. It is set on the
+   scrollbar parts themselves, because Chromium only restyles a scrollbar when
+   a selector on the part changes, not when a variable it reads does (so the
+   switch is instant; scrollbar parts cannot transition either). Chromium and
+   Safari only; Chromium ignores these once `scrollbar-width` or
+   `scrollbar-color` is set, so those are kept to Firefox below. */
+.chain::-webkit-scrollbar {
+  height: 10px;
+}
+
+.chain::-webkit-scrollbar-track,
+.chain::-webkit-scrollbar-thumb {
+  --chain-bar: 0.3;
+}
+
+.chain:hover::-webkit-scrollbar-track,
+.chain:hover::-webkit-scrollbar-thumb,
+.chain--scrolling::-webkit-scrollbar-track,
+.chain--scrolling::-webkit-scrollbar-thumb,
+.chain--panning::-webkit-scrollbar-track,
+.chain--panning::-webkit-scrollbar-thumb {
+  --chain-bar: 1;
+}
+
+.chain::-webkit-scrollbar-track {
+  margin-inline: 18px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--panel-edge) calc(var(--chain-bar) * 100%), transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #000 calc(var(--chain-bar) * 80%), transparent);
+}
+
+.chain::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--panel-edge) calc(var(--chain-bar) * 100%), transparent);
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--accent) calc(var(--chain-bar) * 100%), transparent),
+        color-mix(in srgb, var(--accent) calc(var(--chain-bar) * 100%), transparent)
+      )
+      center / 16px 2px no-repeat,
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--control-face-top) calc(var(--chain-bar) * 100%), transparent),
+      color-mix(in srgb, var(--control-face-bottom) calc(var(--chain-bar) * 100%), transparent)
+    );
+}
+
+.chain::-webkit-scrollbar-thumb:hover,
+.chain::-webkit-scrollbar-thumb:active {
+  border-color: var(--legend-dim);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .chain {
+    --chain-bar: 0.3;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--control-face-top) calc(var(--chain-bar) * 100%), transparent)
+      transparent;
+  }
+
+  .chain:hover,
+  .chain--scrolling,
+  .chain--panning {
+    --chain-bar: 1;
+  }
+}
+
+.chain--alt,
+.chain--alt * {
+  cursor: grab;
+}
+
+.chain--panning,
+.chain--panning * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.chain__cell {
+  flex: 1 1 220px;
+  min-width: 220px;
+  display: flex;
+}
+
+.chain__cell--wide {
+  flex: 0 0 340px;
+  min-width: 340px;
+}
+
+.chain__cell--narrow {
+  flex: 0 0 150px;
+  min-width: 150px;
+}
+
+/* Just wide enough for a title with its power button, and a slider beside its
+   meter. Fixed, so the room it would have taken goes to the wider panels. */
+.chain__cell--snug {
+  flex: 0 0 188px;
+  min-width: 188px;
+}
+
+.chain__cell > .panel {
+  flex: 1;
+  min-width: 0;
+  padding: 22px 18px;
+  align-content: center;
+}
+
+.chain__link {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--legend-dim);
+}
+
+/* Reserved room for custom effects: a dashed edge reads as space set aside
+   rather than a broken control, and it is not interactive. */
+.chain__slot {
+  flex: 0 0 auto;
+  width: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--panel-edge);
+  border-radius: 10px;
+  color: var(--legend-dim);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+.chain__slot-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+/* Holding effects: a dashed box around their panels, links between them, and
+   the label read normally in its top-left corner. Its size is its panels', so
+   an armed box does not widen. */
+.chain__slot--filled,
+.chain__slot--filled.chain__slot--armed {
+  width: auto;
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  padding: 22px 8px 8px;
+  border-radius: 14px;
+  /* The empty marker's near-black hairline vanishes around whole panels. */
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--legend-dim) 70%, transparent);
+}
+
+.chain__slot--filled.chain__slot--armed {
+  border-color: var(--legend);
+}
+
+.chain__slot--filled > .chain__slot-label {
+  position: absolute;
+  top: 5px;
+  left: 12px;
+  writing-mode: horizontal-tb;
+  transform: none;
+}
+
+/* Armed while a chip that fits is dragged: it widens and lights up so the
+   target is obvious; --over is the one directly under the pointer. */
+.chain__slot {
+  transition: width 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.chain__slot--armed {
+  width: 54px;
+  border-color: var(--legend);
+}
+
+.chain__slot--over {
+  border-style: solid;
+  background: color-mix(in srgb, var(--legend) 14%, transparent);
+}
+
+/* A loader row was one wide line; in a chain cell it stacks: the file picker
+   on top, upload and remove side by side, then what is loaded, then the level. */
+.chain .chain .chain .chain .chain .chain .chain .panel__knobs {
+  gap: 16px;
+}
+
+/* Dummy: a marker for the button that will add a second NAM. Same face as the
+   power button but smaller and dimmed, so it reads as unavailable. */
+.add-btn {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--legend-dim);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.add-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The effects tray: a dummy strip above the chain listing what will be
+   draggable onto the pre and post slots. Dashed like the slots, and not
+   interactive — the chips are labels, not controls. */
+.tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 18px;
+  border: 1px dashed var(--panel-edge);
+  border-radius: 10px;
+}
+
+.tray__legend,
+.tray__hint {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--legend-dim);
+}
+
+.tray__hint {
+  margin-left: auto;
+}
+
+.tray__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tray__chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tray__chip small {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--legend-dim);
+}
+
+/* The one real chip: a control, so it looks and acts like one. */
+.tray__chip--live {
+  font: inherit;
+  font-size: 12px;
+  opacity: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.tray__chip--live:focus-visible {
+  outline: 2px solid var(--legend);
+  outline-offset: 2px;
+}
+
+.tray__chip--used {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tray__chip--dragging {
+  opacity: 0.5;
+}
+
+/* What follows the pointer during a drag. */
+.effect-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--legend);
+  border-radius: 5px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.effect-ghost--refuse {
+  opacity: 0.5;
+  border-color: var(--warn);
+}
+
+/* The small cross that removes an effect from the chain. Same footprint as the
+   power switch beside it, so the title row keeps its height. */
+.remove-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--legend-dim);
+  background: transparent;
+  border: 1px solid var(--panel-edge);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.remove-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.remove-btn:hover {
+  color: var(--legend);
+}
+
+.remove-btn:focus-visible {
+  outline: 2px solid var(--legend);
+  outline-offset: 2px;
+}
+
+/* A placed effect's title is its handle: drag it onto the other effect to
+   reorder, or focus it and use the arrow keys. touch-action: none so a touch
+   drag moves the panel instead of scrolling the chain. */
+.panel__handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-radius: 3px;
+}
+
+.panel__handle:focus-visible {
+  outline: 2px solid var(--legend);
+  outline-offset: 3px;
+}
+
+/* The session bar: small, sticky, and not a panel. The live switch, the device
+   pickers with their latency, and the tuner sit on one line and wrap on a
+   narrow screen. Everything inside is the same component as before, only
+   shrunk to fit a bar. */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  /* The name on the left, the live switch and devices in the middle, the meter
+     and tuner on the right. The outer columns share the leftover width equally,
+     which is what puts the middle group at the centre of the bar. */
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+  align-items: center;
+  gap: 8px 18px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border-block: 1px solid var(--panel-edge);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* The name, top left: the same lettering as the start screen's title, sized
+   for a bar. */
+.topnav__brand {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--legend);
+}
+
+.topnav__center,
+.topnav__right {
+  display: flex;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.topnav__center {
+  justify-self: center;
+}
+
+.topnav__right {
+  justify-self: end;
+}
+
+/* Not wide enough for the name, the middle group and the right group with
+   equal outer columns: fall back to one wrapping row, the middle group taking
+   what it can. */
+@media (max-width: 1600px) {
+  .topnav {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .topnav__center {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.topnav__devices {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topnav .device {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 130px;
+  max-width: 260px;
+  min-width: 130px;
+}
+
+.topnav .device__select {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding: 5px 8px;
+}
+
+.topnav .readout {
+  white-space: nowrap;
+}
+
+/* Too narrow for the pickers and latency on one line. */
+@media (max-width: 760px) {
+  .topnav__devices {
+    flex-wrap: wrap;
+    flex-basis: 100%;
+  }
+}
+
+/* The live switch, laid on its side: lever, LED and legend in a row. */
+.topnav .switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topnav .switch__bezel {
+  width: 22px;
+  height: 30px;
+}
+
+.topnav .switch__lever {
+  width: 10px;
+  height: 18px;
+}
+
+.topnav__meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* An end cap holds one fader, centred in its panel. */
+.chain-end {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  flex: 1;
+  padding-block: 8px;
+}
+
+.topnav__legend {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--legend-dim);
+}
+
+/* The tuner button: a round control in the corner of the bar. */
+.topnav__icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.topnav__icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.topnav__icon-btn:hover {
+  color: var(--led-on);
+}
+
+.topnav__icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The tuner modal. The note is the point of it, so it is very large and sits
+   in the middle; the cent meter runs beneath, and Close is last. */
+.tuner-modal {
+  width: min(560px, 92vw);
+  padding: 0;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.tuner-modal::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.tuner-modal__body {
+  display: grid;
+  justify-items: center;
+  gap: 32px;
+  padding: 36px 40px 28px;
+}
+
+.tuner-modal .tuner {
+  width: 100%;
+  gap: 18px;
+}
+
+.tuner-modal .tuner__note {
+  font-size: 128px;
+  min-width: 2ch;
+}
+
+.tuner-modal .tuner__cents {
+  font-size: 22px;
+}
+
+.tuner-modal .tuner__bar {
+  height: 18px;
+  border-radius: 9px;
+}
+
+.tuner-modal__close {
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 9px 36px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tuner-modal__close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The guide: a large modal with the topic list down the left and the chosen
+   topic on the right, which scrolls on its own. On a narrow screen the list
+   becomes a sideways-scrolling row above the text. */
+.tutorial-modal {
+  width: min(1120px, 94vw);
+  height: min(820px, 90vh);
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.tutorial-modal::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.tutorial {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'header header'
+    'nav content';
+  height: 100%;
+}
+
+.tutorial__header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 14px 24px;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.tutorial__heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--legend-dim);
+}
+
+.tutorial__close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--legend);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.tutorial__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tutorial__close:hover {
+  border-color: var(--panel-edge);
+}
+
+.tutorial__nav {
+  grid-area: nav;
+  overflow-y: auto;
+  padding: 16px 12px 24px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--panel-edge);
+}
+
+.tutorial__nav-group {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 18px;
+}
+
+.tutorial__nav-legend {
+  padding: 0 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--legend-dim);
+}
+
+.tutorial__nav-item {
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  padding: 7px 10px;
+  color: var(--legend);
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tutorial__nav-item:hover {
+  background: var(--panel-face);
+}
+
+.tutorial__nav-item--on {
+  color: var(--accent);
+  background: var(--panel-face);
+  border-left-color: var(--accent);
+}
+
+.tutorial__content {
+  grid-area: content;
+  overflow-y: auto;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+.tutorial__article {
+  max-width: 72ch;
+  padding: 28px 40px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.tutorial__crumb {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--legend-dim);
+}
+
+.tutorial__title {
+  margin: 4px 0 14px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.tutorial__article h3 {
+  margin: 24px 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.tutorial__article p,
+.tutorial__article ul,
+.tutorial__article ol {
+  margin: 0 0 12px;
+}
+
+.tutorial__article ul,
+.tutorial__article ol {
+  padding-left: 22px;
+}
+
+.tutorial__article li {
+  margin-bottom: 6px;
+}
+
+.tutorial__article code {
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--panel-bg);
+}
+
+.tutorial__article a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.tutorial__article a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.tutorial__lead {
+  font-size: 15px;
+  color: var(--legend);
+}
+
+.tutorial__steps li {
+  margin-bottom: 10px;
+}
+
+.tutorial__kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 6px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.tutorial__table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+}
+
+.tutorial__table th,
+.tutorial__table td {
+  padding: 9px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.tutorial__table th {
+  width: 34%;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tutorial__params,
+.tutorial__faq {
+  margin: 0 0 12px;
+}
+
+.tutorial__params dt,
+.tutorial__faq dt {
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+.tutorial__params dt {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.tutorial__params dd,
+.tutorial__faq dd {
+  margin: 4px 0 0;
+}
+
+.tutorial__faq dt {
+  margin-top: 18px;
+}
+
+.tutorial__callout {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  background: var(--panel-bg);
+}
+
+.tutorial__callout--warn {
+  border-left-color: var(--warn);
+}
+
+.tutorial__flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 4px;
+  margin: 8px 0 20px;
+}
+
+.tutorial__flow-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tutorial__flow-box {
+  padding: 5px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  background: var(--panel-bg);
+}
+
+.tutorial__flow-arrow {
+  color: var(--legend-dim);
+}
+
+.tutorial__pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 72ch;
+  padding: 16px 40px 28px;
+}
+
+.tutorial__page-btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 16px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tutorial__page-btn--next {
+  border-color: var(--accent);
+}
+
+.tutorial__nav-item:focus-visible,
+.tutorial__close:focus-visible,
+.tutorial__page-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .tutorial-modal {
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .tutorial {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'header'
+      'nav'
+      'content';
+  }
+
+  .tutorial__nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--panel-edge);
+  }
+
+  .tutorial__nav-group {
+    display: contents;
+  }
+
+  .tutorial__nav-legend {
+    display: none;
+  }
+
+  .tutorial__nav-item {
+    flex: none;
+    white-space: nowrap;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+  }
+
+  .tutorial__nav-item--on {
+    border-bottom-color: var(--accent);
+  }
+
+  .tutorial__article {
+    padding: 20px 16px 12px;
+  }
+
+  .tutorial__pager {
+    padding: 12px 16px 20px;
+  }
+
+  .tutorial__table th {
+    white-space: normal;
+  }
+}
+
+/* The amp and cab panel: two stacked sections, each a header with its power
+   switch, a picker row with icon buttons, and a level. */
+.chain__cell--amp {
+  flex: 0 0 264px;
+  min-width: 264px;
+}
+
+/* A POST effect: the delay or the chorus, the same width for both. */
+.chain__cell--effect {
+  flex: 0 0 248px;
+  min-width: 248px;
+}
+
+/* Three 56px knobs on one row: with FEEDBACK's legend the widest, the usual
+   28px gap would wrap the last knob onto a second line. */
+.chain__cell--effect .panel__knobs {
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+/* Where a dragged effect will land: a bar on the side of the other effect's
+   panel it will go to. Toggled directly by usePanelDrag, never by React. */
+.chain__cell--drop-before {
+  box-shadow: -6px 0 0 -2px var(--legend);
+}
+
+.chain__cell--drop-after {
+  box-shadow: 6px 0 0 -2px var(--legend);
+}
+
+/* Every track is `minmax(0, 1fr)`, not the default `auto`: an `auto` track is
+   at least as wide as its content's minimum, and a picker's minimum is its
+   longest option, so one long model name would push the whole stack wider than
+   the panel. */
+.amp-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.amp-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.amp-section + .amp-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.amp-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Silkscreen lettering, the same as a panel title, lit when the stage is on. */
+.amp-section__title {
+  margin: 0;
+  font-size: 10px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--legend-dim);
+}
+
+.amp-section__title--lit {
+  color: var(--led-on);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--led-on) 45%, transparent);
+}
+
+.amp-section__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* `width: 0` with `flex: 1` sizes the picker from the room left in the row,
+   not from its longest option; the text is clipped instead. */
+.amp-section__select {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  text-overflow: ellipsis;
+  min-height: 32px;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.icon-btn:focus-visible,
+.amp-section__select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Narrower than a wide laptop: the name, live switch, tuner and guide buttons
+   on one row, the two device pickers side by side under them, and latency with the
+   level under those. The three groups are dissolved (`display: contents`) so
+   every control becomes a cell of one grid. Above this width they fit on one
+   line. */
+@media (max-width: 1280px) {
+  .topnav {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr auto auto;
+    align-items: center;
+    gap: 10px 12px;
+    padding: 8px 12px;
+  }
+
+  .topnav__center,
+  .topnav__devices,
+  .topnav__right {
+    display: contents;
+  }
+
+  .topnav .switch {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .topnav__brand {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+
+  .topnav__icon-btn {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  /* The guide button follows the tuner. Both share the class, so without its
+     own column it would sit on top of the tuner and hide it. */
+  .topnav__icon-btn + .topnav__icon-btn {
+    grid-column: 5;
+  }
+
+  .topnav__devices > .device:nth-child(1) {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+
+  .topnav__devices > .device:nth-child(2) {
+    grid-column: 3 / 6;
+    grid-row: 2;
+  }
+
+  /* The label sits above its picker, so each picker gets the full half-width. */
+  .topnav .device {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .topnav .device__select {
+    flex: none;
+    width: 100%;
+  }
+
+  .topnav__devices > .readout {
+    grid-column: 1 / 3;
+    grid-row: 3;
+  }
+
+  .topnav__meter {
+    grid-column: 3 / 6;
+    grid-row: 3;
+    justify-self: end;
+  }
+}
+
+/* A phone: not sticky. Three rows would take a third of a small screen, and the
+   chain below the bar fits without scrolling. */
+@media (max-width: 640px) {
+  .topnav {
+    position: static;
+  }
+}
+
+/* Screen-reader-only text: announced, never seen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The preset bar, docked along the bottom of the screen. Its controls are
+   centred; the right edge is left clear for the log button, which sits there. */
+.preset-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 76px 8px 16px;
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border-top: 1px solid var(--panel-edge);
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.preset-bar__label {
+  position: absolute;
+  left: 16px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--legend-dim);
+}
+
+.preset-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preset-bar__name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 260px;
+  min-height: 32px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preset-bar__name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-bar__count {
+  font-size: 11px;
+  color: var(--legend-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.preset-bar__dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+.preset-bar__chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--legend-dim);
+}
+
+.preset-bar__save {
+  min-height: 32px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--legend-dim);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preset-bar__save--on {
+  color: var(--led-on);
+  border-color: var(--accent);
+}
+
+.preset-bar button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.preset-bar .icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The list and the menu open upward, above the bar. */
+.preset-list,
+.preset-menu,
+.preset-help {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  z-index: 6;
+  padding: 8px;
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+.preset-list {
+  left: 50%;
+  width: min(360px, calc(100vw - 24px));
+  transform: translateX(-50%);
+}
+
+.preset-list__search,
+.preset-list__newname,
+.preset-list__rename {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--legend);
+  background: var(--panel-shade);
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+}
+
+.preset-list__rows {
+  max-height: 210px;
+  margin: 8px 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.preset-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.preset-list__row--hl {
+  background: color-mix(in srgb, var(--legend) 9%, transparent);
+}
+
+.preset-list__row--current .preset-list__name {
+  color: var(--led-on);
+}
+
+.preset-list__mark {
+  width: 14px;
+  flex: none;
+  color: var(--led-on);
+}
+
+.preset-list__main {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.preset-list__name {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--legend);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-list__sub {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--legend-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preset-list__warn {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+}
+
+.preset-list__actions {
+  display: none;
+  gap: 2px;
+}
+
+.preset-list__row:hover .preset-list__actions,
+.preset-list__row--hl .preset-list__actions {
+  display: flex;
+}
+
+.preset-list__act {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--legend-dim);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.preset-list__act:hover {
+  color: var(--legend);
+}
+
+.preset-list__empty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--legend-dim);
+}
+
+.preset-list__new {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.preset-list__save {
+  flex: none;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preset-bar__more {
+  position: relative;
+  display: flex;
+}
+
+.preset-menu {
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  width: 210px;
+  gap: 2px;
+}
+
+.preset-menu button {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--legend);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preset-menu button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--legend) 9%, transparent);
+}
+
+.preset-menu button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.preset-menu hr {
+  width: 100%;
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--panel-edge);
+}
+
+.preset-menu__danger {
+  color: var(--warn) !important;
+}
+
+.preset-help {
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+}
+
+.preset-help dl {
+  margin: 0;
+}
+
+.preset-help__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.preset-help dt {
+  color: var(--legend);
+  white-space: nowrap;
+}
+
+.preset-help dd {
+  margin: 0;
+  color: var(--legend-dim);
+  text-align: right;
+}
+
+.preset-help__close {
+  margin-top: 8px;
+  width: 100%;
+  padding: 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.preset-toast {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--panel-bg);
+  background: var(--legend);
+  border-radius: 6px;
+  transform: translateX(-50%);
+}
+
+.preset-toast button {
+  padding: 0 4px;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  text-decoration: underline;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+/* A phone: Save moves into the menu, the name button shrinks, and the label goes. */
+@media (max-width: 640px) {
+  .preset-bar {
+    padding-right: 64px;
+    padding-left: 12px;
+  }
+
+  .preset-bar__label,
+  .preset-bar__save {
+    display: none;
+  }
+
+  .preset-bar__name {
+    width: min(220px, 46vw);
+  }
+
+  /* Centred on the button they would run off the screen, so they dock above
+     the bar's right end instead. */
+  .preset-menu,
+  .preset-help {
+    position: fixed;
+    right: 12px;
+    bottom: 64px;
+    left: auto;
+    max-width: calc(100vw - 24px);
+    transform: none;
+  }
+}
+
+.tutorial__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tutorial__tour-btn {
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 6px 12px;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tutorial__tour-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A section title with its ⓘ button beside it. */
+.amp-section__heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-btn {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--legend-dim);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: help;
+}
+
+.info-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.info-btn:hover,
+.info-btn[aria-expanded='true'] {
+  color: var(--accent);
+}
+
+.info-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The tooltip. Portalled to <body>, so it is fixed to the viewport and sits
+   above the rack; placed by InfoTip with the tour's placement maths. */
+.info-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: min(320px, calc(100vw - 24px));
+  /* A short window scrolls the tooltip rather than cutting it off. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--legend);
+  background: linear-gradient(180deg, var(--panel-face), var(--panel-shade));
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.info-tip p,
+.info-tip ul,
+.info-tip ol {
+  margin: 0 0 8px;
+}
+
+.info-tip ul,
+.info-tip ol {
+  padding-left: 18px;
+}
+
+.info-tip li {
+  margin-bottom: 3px;
+}
+
+.info-tip > :last-child {
+  margin-bottom: 0;
+}
+
+.info-tip__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.info-tip__head {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--legend-dim);
+}
+
+.info-tip__note {
+  color: var(--legend-dim);
+}
+
+.info-tip a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.info-tip code {
+  font-size: 0.95em;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--panel-bg);
+}
+
+/* The arrow, on whichever edge faces the ⓘ button. */
+.info-tip::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--panel-face);
+  border: 1px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+.info-tip[data-side='below']::before,
+.info-tip[data-side='above']::before {
+  left: calc(var(--arrow, 50%) - 6px);
+}
+
+.info-tip[data-side='right']::before,
+.info-tip[data-side='left']::before {
+  top: calc(var(--arrow, 50%) - 6px);
+}
+
+.info-tip[data-side='below']::before { top: -6px; border-right: 0; border-bottom: 0; }
+.info-tip[data-side='above']::before { bottom: -6px; background: var(--panel-shade); border-left: 0; border-top: 0; }
+.info-tip[data-side='right']::before { left: -6px; border-top: 0; border-right: 0; }
+.info-tip[data-side='left']::before { right: -6px; border-bottom: 0; border-left: 0; }
+
+/* An effect panel's knob row, and the type switch under it (the drive's
+   clipping, the reverb's room). */
+.effect-panel__body {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.type-switch {
+  display: inline-flex;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.type-switch__option {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: 6px 12px;
+  color: var(--legend-dim);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 0;
+  border-left: 1px solid var(--panel-edge);
+  cursor: pointer;
+}
+
+.type-switch__option:first-child {
+  border-left: 0;
+}
+
+.type-switch__option--on {
+  color: var(--led-on);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--led-on) 45%, transparent);
+  background: var(--panel-bg);
+}
+
+.type-switch__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The reverb's six types: a 2x3 grid the width of the knob rows above it, so
+   SHIMMER and AMBIENT fit their cells without widening the panel. */
+.type-switch--grid {
+  display: grid;
+  width: 100%;
+}
+
+.type-switch--grid .type-switch__option {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 6px 2px;
+}
+
+.type-switch--grid .type-switch__option:nth-child(3n + 1) {
+  border-left: 0;
+}
+
+.type-switch--grid .type-switch__option:nth-child(n + 4) {
+  border-top: 1px solid var(--panel-edge);
+}
+
+/* The tremolo's waves: drawn, not lettered. The drawing takes the option's
+   colour, and the lit one glows as the lettered legends do. */
+.type-switch--icons .type-switch__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 11px;
+}
+
+.type-switch--icons svg {
+  display: block;
+  width: 24px;
+  height: 12px;
+}
+
+.type-switch--icons .type-switch__option--on svg {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--led-on) 45%, transparent));
+}
+
+/* The reverb's five knobs: three on the first row, two centred under them. */
+.chain__cell--effect .panel__knobs--rows {
+  flex-wrap: wrap;
+  row-gap: 10px;
+  max-width: 200px;
+}
+
+.reverb-panel__switches {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* TRAILS: a small lit toggle with its own LED, so its state reads at a glance
+   without competing with the power switch in the title. */
+.trails-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: 5px 10px;
+  color: var(--legend-dim);
+  background: linear-gradient(180deg, var(--control-face-top), var(--control-face-bottom));
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.trails-switch__led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--led-off);
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.trails-switch--on {
+  color: var(--led-on);
+}
+
+.trails-switch--on .trails-switch__led {
+  background: var(--led-on);
+  box-shadow: 0 0 7px var(--led-on);
+}
+
+.trails-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://amp.sarl.dev/sitemap.xml
